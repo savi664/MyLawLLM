@@ -7,14 +7,11 @@
   <meta name="theme-color" content="#0a0a12">
   <title>⚖️ MyLawLLM | Sri Lankan Legal Assistant</title>
   
-  <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   
-  <!-- Styles -->
   <link rel="stylesheet" href="styles.css">
   
-  <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
 <body>
@@ -35,7 +32,18 @@
         <article class="message bot">
           <span class="label">MyLawLLM</span>
           <div class="bubble">
-            Greetings! I'm your legal companion, well-versed in Sri Lankan law. Ask me anything about your rights, obligations, or legal procedures — I'll draw from our extensive legal database to give you clear, actionable answers.
+            <div class="welcome-content">
+              <h2>MyLawLLM - Sri Lankan Legal Assistant</h2>
+              <p>Your trusted legal companion for Sri Lankan law. Ask me about your rights, legal procedures, or any aspect of the law — I'll provide clear, actionable answers backed by authoritative legal sources.</p>
+              
+              <div class="disclaimer-box">
+                <span class="disclaimer-icon">!</span>
+                <div class="disclaimer-text">
+                  <strong>Important Disclaimer</strong>
+                  <p>I am an AI assistant and may not always provide 100% accurate information. Always verify legal advice with a qualified professional. The knowledge base is sourced from official Sri Lanka government legal databases and enacted legislation.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </article>
       </div>
@@ -56,23 +64,26 @@
             id="send" 
             type="button"
             aria-label="Send question"
-          >✦</button>
+          ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
         </div>
       </div>
     </section>
 
     <aside class="sources-panel" aria-label="Reference sources">
-      <h2 class="sources-panel__header">Reference Sources</h2>
+      <div class="sources-panel__header">
+        <span>Reference Sources</span>
+      </div>
       <div class="sources-list" id="sources-list" role="complementary">
         <div class="sources-empty">
-          <div class="sources-empty__icon" aria-hidden="true">📜</div>
-          <p class="sources-empty__text">Your legal sources will appear here after your first question.</p>
+          <p class="sources-empty__text">Reference sources will appear here after your first question.</p>
         </div>
+      </div>
+      <div class="sources-footer">
+        <p class="built-by">Crafted by <a href="#" target="_blank">Savinu Gunarathna</a></p>
       </div>
     </aside>
   </main>
 
-  <!-- Scripts -->
   <script src="app.js"></script>
 </body>
 </html>
