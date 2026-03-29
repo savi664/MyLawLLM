@@ -1,0 +1,9 @@
+fastapi
+pydantic
+openai
+rank_bm25
+langchain-qdrant
+qdrant-client
+langchain-huggingface
+uvicorn[standard]
+python-multipart

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MyLawLLM - Your Sri Lankan Legal Assistant">
+  <meta name="theme-color" content="#0a0a12">
+  <title>⚖️ MyLawLLM | Sri Lankan Legal Assistant</title>
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+</head>
+<body>
+  <header class="header" role="banner">
+    <div class="header__logo">
+      <div class="header__icon" aria-hidden="true">⚖️</div>
+      <div class="header__brand">
+        <h1 class="header__title">MyLawLLM</h1>
+        <p class="header__subtitle">Sri Lankan Legal Assistant</p>
+      </div>
+    </div>
+    <span class="header__badge">AI Powered</span>
+  </header>
+
+  <main class="main" role="main">
+    <section class="chat-panel" aria-label="Chat conversation">
+      <div class="messages" id="messages" role="log" aria-live="polite">
+        <article class="message bot">
+          <span class="label">MyLawLLM</span>
+          <div class="bubble">
+            Greetings! I'm your legal companion, well-versed in Sri Lankan law. Ask me anything about your rights, obligations, or legal procedures — I'll draw from our extensive legal database to give you clear, actionable answers.
+          </div>
+        </article>
+      </div>
+
+      <div class="input-container">
+        <label for="input" class="visually-hidden">Type your legal question</label>
+        <div class="input-wrapper">
+          <textarea 
+            class="input" 
+            id="input" 
+            name="question"
+            placeholder="Ask a legal question…" 
+            rows="1"
+            aria-label="Question input"
+          ></textarea>
+          <button 
+            class="send-btn" 
+            id="send" 
+            type="button"
+            aria-label="Send question"
+          >✦</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sources-panel" aria-label="Reference sources">
+      <h2 class="sources-panel__header">Reference Sources</h2>
+      <div class="sources-list" id="sources-list" role="complementary">
+        <div class="sources-empty">
+          <div class="sources-empty__icon" aria-hidden="true">📜</div>
+          <p class="sources-empty__text">Your legal sources will appear here after your first question.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
