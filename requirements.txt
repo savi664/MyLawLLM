@@ -1,9 +1,9 @@
 fastapi
-pydantic
+uvicorn
+python-dotenv
 openai
-rank_bm25
+rank-bm25
 langchain-qdrant
-qdrant-client
 langchain-huggingface
-uvicorn[standard]
-python-multipart
+qdrant-client
+sentence-transformers
