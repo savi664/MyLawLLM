@@ -1,4 +1,5 @@
 import os
+import pickle
 from typing import Any, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -8,15 +9,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from openai import OpenAI
 from rank_bm25 import BM25Okapi
-from langchain_qdrant import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 
-
-# ── Config ────────────────────────────────────────────────────
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # for GitHub Models / Azure inference endpoint
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 EMBED_MODEL = "all-MiniLM-L6-v2"
 GPT_MODEL = "gpt-4o"
@@ -26,6 +25,9 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "legal_docs")
 DENSE_TOP_K = 20
 BM25_TOP_K = 20
 FINAL_TOP_K = 5
+
+BM25_PATH = "bm25_index.pkl"
+TEXTS_PATH = "all_texts.pkl"
 
 
 def require_env(name: str, value: Optional[str]) -> str:
@@ -38,52 +40,60 @@ QDRANT_API_KEY = require_env("QDRANT_API_KEY", QDRANT_API_KEY)
 QDRANT_URL = require_env("QDRANT_URL", QDRANT_URL)
 GITHUB_TOKEN = require_env("GITHUB_TOKEN", GITHUB_TOKEN)
 
-
-# ── Startup resources ─────────────────────────────────────────
 print("Loading embeddings...")
 embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
-print("Connecting to Qdrant Cloud...")
-qdrant_client = QdrantClient(
-    url=QDRANT_URL,
-    api_key=QDRANT_API_KEY,
-)
+print("Connecting to Qdrant...")
+qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
-db = Qdrant(
+db = QdrantVectorStore(
     client=qdrant_client,
     collection_name=QDRANT_COLLECTION,
-    embeddings=embeddings,
+    embedding=embeddings,
 )
 
-print("Fetching documents for BM25 index...")
-try:
-    store = db.get(include=["documents", "metadatas"])
-except TypeError:
-    store = db.get(include=["documents"])
+if os.path.exists(BM25_PATH) and os.path.exists(TEXTS_PATH):
+    print("Loading BM25 index from disk...")
+    with open(BM25_PATH, "rb") as f:
+        bm25 = pickle.load(f)
+    with open(TEXTS_PATH, "rb") as f:
+        all_texts, all_metadata = pickle.load(f)
+else:
+    print("BM25 index not found on disk, building from Qdrant...")
+    all_texts = []
+    all_metadata = []
+    offset = None
 
-all_texts = store.get("documents", []) or []
-all_metadata = store.get("metadatas", []) or [{"source": "Unknown"}] * len(all_texts)
+    while True:
+        results, offset = qdrant_client.scroll(
+            collection_name=QDRANT_COLLECTION,
+            limit=100,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        for point in results:
+            all_texts.append(point.payload.get("content", ""))
+            all_metadata.append({"source": point.payload.get("source", "Unknown")})
+        if offset is None:
+            break
 
-if not all_texts:
-    raise RuntimeError(
-        f"No documents found in Qdrant collection '{QDRANT_COLLECTION}'."
-    )
+    if not all_texts:
+        raise RuntimeError(f"No documents found in Qdrant collection '{QDRANT_COLLECTION}'.")
+
+    bm25 = BM25Okapi([t.lower().split() for t in all_texts])
 
 if len(all_metadata) != len(all_texts):
     all_metadata = [{"source": "Unknown"}] * len(all_texts)
 
-print("Building BM25 index...")
-bm25 = BM25Okapi([text.lower().split() for text in all_texts])
+print(f"Ready with {len(all_texts):,} chunks loaded")
 
-print(f"Ready - {len(all_texts):,} chunks loaded")
-
-client = OpenAI(
+openai_client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
     api_key=GITHUB_TOKEN,
 )
 
 
-# ── Hybrid search ─────────────────────────────────────────────
 def search(query: str) -> List[dict[str, Any]]:
     dense = db.similarity_search_with_score(query, k=DENSE_TOP_K)
 
@@ -136,28 +146,25 @@ def search(query: str) -> List[dict[str, Any]]:
     return sorted(chunks, key=lambda c: c["score"], reverse=True)[:FINAL_TOP_K]
 
 
-# ── System prompt ─────────────────────────────────────────────
-SYSTEM = """You are MyLawLLM — a legal assistant that knows Sri Lankan law inside out.
+SYSTEM = """You are MyLawLLM, a legal assistant that knows Sri Lankan law inside out.
 
 Keep it human. Talk like a knowledgeable friend who happens to be a lawyer, not a textbook.
 Be direct, clear, and concise. No waffle.
 
-IMPORTANT: Structure your response EXACTLY like this:
+Structure your response exactly like this:
 
-**Plain-English Answer:**
-[Give a clear, concise answer in normal language that anyone can understand. Address the user's question directly.]
+Plain-English Answer:
+Give a clear, concise answer in normal language that anyone can understand. Address the question directly.
 
-**Legal Basis:**
-[List the specific Acts, Ordinances, or Laws and their sections that apply. Use bold for Act names like **Consumer Protection Act** or section 23 of the relevant law. Be precise about which section supports each point.]
+Legal Basis:
+List the specific Acts, Ordinances, or Laws and their sections that apply. Be precise about which section supports each point.
 
 Rules:
-- Only use the legal text given to you. Don't make things up.
-- Always bold the Act name and section number where applicable.
-- If the context doesn't cover it, just say so honestly.
+- Only use the legal text given to you. Do not make things up.
+- Always mention the Act name and section number clearly.
+- If the context does not cover it, say so honestly.
 """
 
-
-# ── API ───────────────────────────────────────────────────────
 app = FastAPI(title="MyLawLLM")
 
 app.add_middleware(
@@ -188,7 +195,7 @@ def ask(req: Query):
     chunks = search(question)
     if not chunks:
         return {
-            "answer": "I couldn't find relevant legal material in the current knowledge base for that question.",
+            "answer": "I could not find relevant legal material in the knowledge base for that question.",
             "sources": [],
         }
 
@@ -206,7 +213,7 @@ def ask(req: Query):
     ]
 
     try:
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model=GPT_MODEL,
             messages=messages,
             temperature=0.2,
@@ -228,7 +235,6 @@ def ask(req: Query):
     }
 
 
-# ── Frontend ──────────────────────────────────────────────────
 if os.path.isdir("frontend"):
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
