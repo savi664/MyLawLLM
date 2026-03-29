@@ -1,36 +1,56 @@
-MyLawLLM ⚖️
+# MyLawLLM 🏛️
 
-A practical legal assistant for Sri Lankan law that combines dense retrieval, BM25 search, and LLM reasoning to deliver clear, grounded answers with proper legal references.
+> A legal assistant for Sri Lankan law that combines hybrid retrieval with LLM reasoning to deliver accurate, grounded, and understandable answers.
 
-What this is
+---
 
-MyLawLLM is not just another chatbot. It is built to actually reason over real legal text and explain it in a way that makes sense to normal people while still pointing back to the law.
+## Overview
 
-You ask a question.
-It finds the most relevant legal sections.
-Then it answers in plain English and backs it up with the actual Acts and sections.
+MyLawLLM bridges the gap between complex legal language and everyday understanding. Instead of relying purely on a language model's training data, the system retrieves relevant legal text from a curated knowledge base and uses it as grounding context for every response — ensuring answers are both interpretable and traceable to real sources.
 
-Core Features
-Hybrid Retrieval (Dense + BM25)
-Grounded answers using real legal documents
-Clear dual-output format:
-Plain-English explanation
-Legal basis with Acts and sections
-FastAPI backend with simple frontend
-Cloud-based vector DB (Qdrant)
-Optimized for real-world legal queries in Sri Lanka
-How it works
-Your query goes through hybrid search:
-Dense retrieval (embeddings via MiniLM)
-Sparse retrieval (BM25)
-Results are merged and ranked
-Top chunks are sent as context to the LLM
-The LLM generates a structured response using only that context
-Tech Stack
-FastAPI
-Uvicorn
-Qdrant (Vector Database)
-HuggingFace Embeddings (MiniLM)
-BM25 (rank-bm25)
-OpenAI-compatible API (GitHub Models / Azure endpoint)
-Vanilla JS frontend
+---
+
+## How It Works
+```text
+User Query
+    │
+    ▼
+Hybrid Retrieval
+    ├── Dense Search   (Embeddings / Semantic Similarity)
+    └── Sparse Search  (BM25 / Keyword Relevance)
+    │
+    ▼
+Merge & Rank Results
+    │
+    ▼
+Top Chunks → LLM Context
+    │
+    ▼
+Structured Response
+    ├── Plain-English Explanation
+    └── Legal Basis (Acts & Sections cited)
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI, Uvicorn |
+| LLM API | OpenAI-compatible endpoint (GitHub Models / Azure) |
+| Vector Database | Qdrant (Cloud-hosted) |
+| Embeddings | HuggingFace `all-MiniLM-L6-v2` |
+| Search | Hybrid Retrieval (Dense + BM25 via `rank-bm25`) |
+| Frontend | HTML, CSS, JavaScript |
+
+---
+
+## Key Idea
+
+Instead of asking an LLM to *know* the law, **MyLawLLM forces the model to *read* the law first, then answer.**
+
+This makes responses:
+- ✅ **Reliable** — grounded in actual legal text, not model memory
+- ✅ **Transparent** — every answer cites the relevant Act and section
+- ✅ **Practical** — written in plain English anyone can understand
