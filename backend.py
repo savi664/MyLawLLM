@@ -11,7 +11,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from openai import OpenAI
 from rank_bm25 import BM25Okapi
-from langchain_qdrant import QdrantVectorStore
+try:
+    from langchain_qdrant import QdrantVectorStore
+except ImportError:
+    try:
+        from langchain_qdrant import Qdrant as QdrantVectorStore
+    except ImportError:
+        from langchain_community.vectorstores import Qdrant as QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 
@@ -52,14 +58,32 @@ logger.info("Initializing MyLawLLM components...")
 
 try:
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
-    qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY) if QDRANT_URL else None
+    
+    if QDRANT_URL:
+        # Check if it's a cloud URL to set the correct port
+        is_cloud = "qdrant.io" in QDRANT_URL
+        qdrant_client = QdrantClient(
+            url=QDRANT_URL, 
+            port=443 if is_cloud else 6333,
+            api_key=QDRANT_API_KEY,
+            prefer_grpc=False, # Use REST for better compatibility on free tiers
+        )
+    else:
+        qdrant_client = None
     
     if qdrant_client:
-        db = QdrantVectorStore(
-            client=qdrant_client,
-            collection_name=QDRANT_COLLECTION,
-            embedding=embeddings,
-        )
+        try:
+            db = QdrantVectorStore(
+                client=qdrant_client,
+                collection_name=QDRANT_COLLECTION,
+                embedding=embeddings,
+            )
+        except TypeError:
+            db = QdrantVectorStore(
+                client=qdrant_client,
+                collection_name=QDRANT_COLLECTION,
+                embeddings=embeddings,
+            )
     else:
         db = None
 except Exception as e:
@@ -237,6 +261,7 @@ def health():
 
 # Static File Serving
 if os.path.isdir("frontend"):
+    # Mount frontend for explicit /assets access if needed
     app.mount("/assets", StaticFiles(directory="frontend", html=False), name="assets")
 
 @app.get("/")
@@ -246,9 +271,17 @@ async def serve_index():
         return FileResponse(index_path)
     return JSONResponse(status_code=404, content={"message": "Frontend not found"})
 
-# Fallback for SPA routing if needed (though this is a simple app)
+# Catch-all to serve static files from frontend root OR index.html (for SPA)
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str):
-    if full_path.startswith("ask") or full_path.startswith("health"):
-        return # Let FastAPI handle these
+    # Ignore API routes
+    if full_path.startswith("ask") or full_path.startswith("health") or full_path.startswith("assets"):
+        raise HTTPException(status_code=404)
+        
+    # Check if the file exists in the frontend directory
+    file_path = os.path.join("frontend", full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # Fallback to index.html for SPA behavior
     return await serve_index()

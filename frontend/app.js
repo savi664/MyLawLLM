@@ -150,25 +150,27 @@ const App = {
     // Premium Parser for Structured Legal Output
     let html = '';
     
-    // Extract sections
-    const plainEnglishRegex = /\*\*Plain-English Answer\*\*:([\s\S]*?)(?=\*\*Legal Basis\*\*|$)/i;
-    const legalBasisRegex = /\*\*Legal Basis\*\*:(.*)/is;
+    // Extract sections. Handle both '**' and '##' markdown.
+    const plainEnglishRegex = /(?:##|\*\*)*\s*Plain[- ]English Answer(?:[:\*\*]*)\s*([\s\S]*?)(?=(?:##|\*\*)*\s*Legal Basis|$)/i;
+    const legalBasisRegex = /(?:##|\*\*)*\s*Legal Basis(?:[:\*\*]*)\s*([\s\S]*)/i;
 
     const plainMatch = text.match(plainEnglishRegex);
     const legalMatch = text.match(legalBasisRegex);
 
     if (plainMatch) {
+      // Remove any trailing markdown artifacts like '##' that might have been caught before lookahead
+      let plainText = plainMatch[1].replace(/(?:##|\*\*)\s*$/, '').trim();
       html += `
         <div class="response-section">
           <span class="section-label">Plain-English Answer</span>
-          <div class="section-body">${this.formatListAndParagraphs(plainMatch[1].trim())}</div>
+          <div class="section-body">${this.formatListAndParagraphs(plainText)}</div>
         </div>
       `;
     }
 
     if (legalMatch) {
       html += `
-        <div class="response-section">
+        <div class="response-section" style="border-left: 3px solid var(--accent-gold); margin-top: 16px;">
           <span class="section-label">Legal Basis</span>
           <div class="section-body">${this.formatListAndParagraphs(legalMatch[1].trim())}</div>
         </div>
